@@ -58,11 +58,11 @@ class MyPlugin(Star):
 
         if result["success"]:
             # 仅返回原始报文
-            raw_taf = result["data"][0].get("rawTAF", "无原始报文")
+            raw_taf = result["data"][0].get("rawTAF", "无TAF报文")
             logger.info(
                 f"astrbot-flysim-plugin: Successfully fetched TAF for {icao_code}"
             )
-            yield event.plain_result(f"📄 TAF 原始报文:\n{raw_taf} \n\n")
+            yield event.plain_result(f"📄 报文:\n{raw_taf} \n\n")
         else:
             yield event.plain_result(f"❌ {result['error']}")
 

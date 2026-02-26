@@ -322,15 +322,15 @@ def parse_metar(metar_data: dict) -> str:
             if us_altim_match:
                 us_altim = us_altim_match.group(1)
                 us_altim_inhg = f"{int(us_altim) / 100:.2f}"
-                altim_str = f"{altim:.2f} inHg A{us_altim_inhg}"
+                altim_str = f"{altim:.2f} hPa / {us_altim_inhg} inHg"
             else:
-                altim_str = f"{altim:.2f} inHg"
+                altim_str = f"{altim:.2f} hPa"
 
         # 组装输出
         lines = []
 
         if raw_ob:
-            lines.append(f"📄 原始报文: {raw_ob}")
+            lines.append(f"📄 报文: {raw_ob}")
 
         lines.extend(
             [
@@ -353,7 +353,7 @@ def parse_metar(metar_data: dict) -> str:
             lines.append(f"💧 露点: {dewp_str}")
 
         if altim != "N/A":
-            lines.append(f"📊 气压: {altim_str}")
+            lines.append(f"📊 修正海压: {altim_str}")
 
         # 运行标准 (fltCat)
         flt_cat = metar_data.get("fltCat", "")
