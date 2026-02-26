@@ -2,7 +2,9 @@ from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 
-@register("helloworld", "YourName", "一个简单的 Hello World 插件", "1.0.0")
+from .utils.weather import fetch_metar, fetch_taf, parse_metar
+
+
 class MyPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -10,15 +12,59 @@ class MyPlugin(Star):
     async def initialize(self):
         """可选择实现异步的插件初始化方法，当实例化该插件类之后会自动调用该方法。"""
 
-    # 注册指令的装饰器。指令名为 helloworld。注册成功后，发送 `/helloworld` 就会触发这个指令，并回复 `你好, {user_name}!`
-    @filter.command("helloworld")
-    async def helloworld(self, event: AstrMessageEvent):
-        """这是一个 hello world 指令""" # 这是 handler 的描述，将会被解析方便用户了解插件内容。建议填写。
-        user_name = event.get_sender_name()
-        message_str = event.message_str # 用户发的纯文本消息字符串
-        message_chain = event.get_messages() # 用户所发的消息的消息链 # from astrbot.api.message_components import *
-        logger.info(message_chain)
-        yield event.plain_result(f"Hello, {user_name}, 你发了 {message_str}!") # 发送一条纯文本消息
+    @filter.command_group("weather")
+    def weather(self):
+        """获取实时航空天气"""
+        pass
+
+    @weather.command("metar")
+    async def get_metar(self, event: AstrMessageEvent, icao_code: str):
+        """获取机场 METAR 天气信息, 用法: /weather metar ZSSS"""
+        icao_code = icao_code.upper()
+
+        # 验证 ICAO 码格式 (4位字母)
+        if not icao_code.isalpha() or len(icao_code) != 4:
+            yield event.plain_result(
+                "❌ ICAO 机场代码格式错误，请输入4位字母（如 ZSSS）"
+            )
+            return
+
+        result = await fetch_metar(icao_code)
+
+        if result["success"]:
+            metar_text = parse_metar(result["data"][0])
+            logger.info(
+                f"astrbot-flysim-plugin: Successfully fetched METAR for {icao_code}"
+            )
+            yield event.plain_result(
+                f"{metar_text} \n\n  !!!解读仅供参考，请以原始报文为准!!!"
+            )
+        else:
+            yield event.plain_result(f"❌ {result['error']}")
+
+    @weather.command("taf")
+    async def get_taf(self, event: AstrMessageEvent, icao_code: str):
+        """获取机场 TAF 天气预报, 用法: /weather taf ZSSS"""
+        icao_code = icao_code.upper()
+
+        # 验证 ICAO 码格式 (4位字母)
+        if not icao_code.isalpha() or len(icao_code) != 4:
+            yield event.plain_result(
+                "❌ ICAO 机场代码格式错误，请输入4位字母（如 ZSSS）"
+            )
+            return
+
+        result = await fetch_taf(icao_code)
+
+        if result["success"]:
+            # 仅返回原始报文
+            raw_taf = result["data"][0].get("rawTAF", "无原始报文")
+            logger.info(
+                f"astrbot-flysim-plugin: Successfully fetched TAF for {icao_code}"
+            )
+            yield event.plain_result(f"📄 TAF 原始报文:\n{raw_taf} \n\n")
+        else:
+            yield event.plain_result(f"❌ {result['error']}")
 
     async def terminate(self):
         """可选择实现异步的插件销毁方法，当插件被卸载/停用时会调用。"""
